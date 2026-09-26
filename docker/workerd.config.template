@@ -1,48 +1,47 @@
 # Конфигурация workerd для продакшн-контейнера (standalone, без Cloudflare).
 # Переменные подставляет entrypoint.sh через envsubst.
+#
+# Схема capnp соответствует src/workerd/server/workerd.capnp версии 1.20251001.0:
+#   - Worker.bindings НЕ имеют поля `type` — текст передаётся как (name = "...", text = "...").
+#   - Durable SqlStorage / Builtin Assets в этой версии отсутствуют — вместо них:
+#       * БД: node:sqlite (compatibility flag nodejs_compat) пишет в /data/survey-db.sqlite;
+#       * статика: service типа disk, к которому воркер ходит через fetch("http://static/...").
 using Workerd = import "/workerd/workerd.capnp";
 
 const config :Workerd.Config = (
   services = [
-    name = "main",
-    worker = surveyApp,
+    ( name = "main", worker = .surveyApp ),
+    # Статические ассеты прод-сборки (dist/client). Доступен воркеру по http://static/*,
+    # наружу не опубликован (ни один socket на него не указывает).
+    ( name = "static", disk = ( path = "/srv/assets" ) ),
     # Egress строго запрещён: приложение не должно ходить наружу
-    # (защита от SSRF и утечки данных из контейнера).
-    name = "internet",
-    external = (address = "127.0.0.1")
+    # (защита от SSRF и утечки данных из контейнера). internet переопределён
+    # на localhost — любой fetch() на внешний адрес немедленно падает.
+    ( name = "internet", external = ( address = "127.0.0.1", http = () ) )
   ],
   sockets = [
     ( name = "http",
       address = "0.0.0.0:${PORT}",
-      http = true,
+      http = (style = host),
       service = "main"
     )
   ]
 );
 
 const surveyApp :Workerd.Worker = (
-  compatibilityDate = "2026-09-01",
+  compatibilityDate = "2025-10-01",
+  compatibilityFlags = ["nodejs_compat"],
   bindings = [
-    # D1 поверх локального SQLite-файла на volume /data (переживает рестарты).
-    ( name = "DB",
-      durableSqlStorage = ( disk = ( path = "/data/survey-db.sqlite", schema = "v1" ) )
-    ),
-    # Статические ассеты прод-сборки (JS/CSS/изображения).
-    ( name = "ASSETS", builtinAssets = (
-        directory = "./assets",
-        browser_TTL = 86400,
-        handleHtmlRequests = ( injectCrossOriginEmbedder = null )
-    ) ),
-    ( name = "SURVEY_SIGNING_KEY", type = "text", text = "${SURVEY_SIGNING_KEY}"),
-    ( name = "VK_ENCRYPTION_KEY",  type = "text", text = "${VK_ENCRYPTION_KEY}"),
-    ( name = "TRUSTED_PROXIES",    type = "text", text = "${TRUSTED_PROXIES}"),
-    ( name = "ADMIN_PASSWORD",     type = "text", text = "${ADMIN_PASSWORD}")
+    ( name = "SURVEY_SIGNING_KEY", text = "${SURVEY_SIGNING_KEY}"),
+    ( name = "VK_ENCRYPTION_KEY",  text = "${VK_ENCRYPTION_KEY}"),
+    ( name = "TRUSTED_PROXIES",    text = "${TRUSTED_PROXIES}"),
+    ( name = "ADMIN_PASSWORD",     text = "${ADMIN_PASSWORD}"),
+    # Путь к SQLite-файлу на volume /data (переживает рестарты контейнера).
+    ( name = "SURVEY_DB_PATH",     text = "/data/survey-db.sqlite")
   ],
   modules = [
     ( name = "index.js",
       esModule = embed "./worker/index.js"
     )
-  ],
-  caches = localDisk,
-  publicBuckets = (browserCache = "cache", disk = "/data/cache")
+  ]
 );

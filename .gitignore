@@ -1,9 +1,1 @@
-node_modules/
-.next/
-.next-build/
-build/
-dist/
-.workerd/
-*.log
-.env
-.env.local
+(empty)
