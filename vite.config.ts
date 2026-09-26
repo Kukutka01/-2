@@ -4,27 +4,22 @@ import hostingConfig from "./.openai/hosting.json";
 import { readExecutionProfile } from "./scripts/execution-profile.mjs";
 import { sites } from "./build/sites-vite-plugin";
 
-const SITE_CREATOR_PLACEHOLDER_DATABASE_ID =
-  "00000000-0000-4000-8000-000000000000";
-
-const { d1, r2 } = hostingConfig;
+const { r2 } = hostingConfig;
 
 // macOS Seatbelt blocks FSEvents, so Codex previews need polling for HMR.
 const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
 const managedLinux = readExecutionProfile() === "managed-linux";
 
+// Привязки D1 объявлены в wrangler.jsonc (единственный источник истины).
+// Здесь не добавляем дублирующий binding "DB", иначе dist/server/wrangler.json
+// получает два D1-bindinga с одинаковым именем и `wrangler dev` падает.
 const localBindingConfig = {
   main: "vinext/server/fetch-handler",
-  compatibility_flags: ["nodejs_compat"],
-  d1_databases: d1
-    ? [
-        {
-          binding: d1,
-          database_name: "site-creator-d1",
-          database_id: SITE_CREATOR_PLACEHOLDER_DATABASE_ID,
-        },
-      ]
-    : [],
+  // compatibility_flags и d1_databases объявлены только в корневом wrangler.jsonc —
+  // дубликаты в dist/server/wrangler.json вызывают ошибки workerd
+  // ("Compatibility flag specified multiple times" / duplicate D1 binding).
+  compatibility_flags: [],
+  d1_databases: [],
   r2_buckets: r2
     ? [
         {

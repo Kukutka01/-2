@@ -4,7 +4,8 @@
 {
   "name": "trajectory-survey",
   "main": "vinext/server/fetch-handler",
-  "compatibility_date": "2026-09-01",
+  // workerd в wrangler@4.92.0 поддерживает compatibility_date не позднее 2026-05-22.
+  "compatibility_date": "2026-05-22",
   "compatibility_flags": ["nodejs_compat"],
   "d1_databases": [
     {
