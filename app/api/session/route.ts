@@ -1,0 +1,2 @@
+import {sameOrigin,readSession,createSession,csrf,rateLimit,json,errorResponse} from '@/lib/security';
+export async function GET(request:Request){try{sameOrigin(request);await rateLimit(request,'session');const existing=await readSession(request);if(existing)return json({csrf:await csrf(existing)});const {session,cookie}=await createSession(request);return json({csrf:await csrf(session)},200,{'Set-Cookie':cookie})}catch(e){return errorResponse(e)}}
