@@ -11,6 +11,10 @@ ENV NEXT_TELEMETRY_DISABLED=1 npm_config_fund=false npm_config_audit=false
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 
+# vite.config.ts импортирует .openai/hosting.json; каталог исключён из контекста
+# через .dockerignore, поэтому кладём файл напрямую (дублирует содержимое репозитория).
+RUN mkdir -p .openai && printf '{\n  "d1": "DB",\n  "r2": null\n}\n' > .openai/hosting.json
+
 # Прод-сборка (vinext -> dist/server + dist/client)
 COPY . .
 RUN npm run build
