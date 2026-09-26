@@ -5,3 +5,6 @@ node_modules/
 .wrangler/
 dist/
 out/
+work/
+*.tsbuildinfo
+trajectory-survey-full.tar.gz
