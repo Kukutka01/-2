@@ -25,14 +25,18 @@ RUN apt-get update \
 # workerd — standalone-рантайм Cloudflare Workers: исполняет прод-сборку вместе
 # с локальной SQLite-базой (D1 durableSqlStorage binding, volume /data).
 ARG WORKERD_VERSION=1.20250927.0
-RUN ARCH="$(dpkg --print-architecture)" \
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends gzip \
+ && rm -rf /var/lib/apt/lists/* \
+ && ARCH="$(dpkg --print-architecture)" \
  && case "$ARCH" in \
-      amd64) WARCH=x64 ;; \
+      amd64) WARCH=64 ;; \
       arm64) WARCH=arm64 ;; \
       *) echo "unsupported arch: $ARCH" && exit 1 ;; \
     esac \
- && curl -fsSL -o /usr/local/bin/workerd \
-      "https://github.com/cloudflare/workerd/releases/download/v${WORKERD_VERSION}/workerd-linux-${WARCH}" \
+ && curl -fsSL --retry 3 \
+      "https://github.com/cloudflare/workerd/releases/download/v${WORKERD_VERSION}/workerd-linux-${WARCH}.gz" \
+      | gunzip > /usr/local/bin/workerd \
  && chmod 755 /usr/local/bin/workerd \
  && "/usr/local/bin/workerd" --version
 
