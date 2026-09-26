@@ -27,8 +27,10 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 # workerd — standalone-рантайм Cloudflare Workers: исполняет прод-сборку вместе
-# с локальной SQLite-базой (D1 durableSqlStorage binding, volume /data).
-ARG WORKERD_VERSION=1.20250927.0
+# с локальной SQLite-базой (node:sqlite через флаг nodejs_compat, volume /data).
+# 1.20260926.1 — актуальный релиз; старые версии (<=1.20251100) не поддерживают
+# запуск без --root и имеют несовместимую capnp-схему (см. docker/entrypoint.sh).
+ARG WORKERD_VERSION=1.20260926.1
 RUN apt-get update \
  && apt-get install -y --no-install-recommends gzip \
  && rm -rf /var/lib/apt/lists/* \
@@ -52,7 +54,7 @@ WORKDIR /srv
 COPY --from=build /app/dist/server ./worker
 COPY --from=build /app/dist/client ./assets
 COPY docker/workerd.config.template docker/workerd.init.config.template \
-     docker/init-worker.mjs docker/migrations.sql docker/entrypoint.sh ./docker/
+     docker/init-db.mjs docker/static-server.mjs docker/migrations.sql docker/entrypoint.sh ./docker/
 RUN chmod +x docker/entrypoint.sh && chown -R appuser:appuser /srv
 
 USER appuser

@@ -5,12 +5,16 @@
 // применяются к файлу /data/survey-db.sqlite (том docker-compose) и процесс завершается
 // выходом из event loop (сокет init закрыт). Все statements — CREATE ... IF NOT EXISTS,
 // поэтому повторные запуски безопасны.
+import { env } from 'cloudflare:workers';
 import { DatabaseSync } from 'node:sqlite';
 
-const DB_PATH = process.env.SURVEY_DB_PATH || '/data/survey-db.sqlite';
+// SURVEY_DB_PATH — text-binding из workerd.init.config.capnp (envsubst).
+const DB_PATH = (typeof env !== 'undefined' && env.SURVEY_DB_PATH)
+  ? env.SURVEY_DB_PATH
+  : (process.env.SURVEY_DB_PATH || '/data/survey-db.sqlite');
 
 async function applySchema() {
-  const res = await fetch('http://static/docker/migrations.sql');
+  const res = await fetch('http://static/migrations.sql');
   if (!res.ok) throw new Error(`migrations.sql недоступен: HTTP ${res.status}`);
   const sql = await res.text();
   const statements = sql
